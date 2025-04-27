@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechSphere Portfolio | 3D Interactive CV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.11.4/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@300;400;700&display=swap');
+        
+        :root {
+            --neon-blue: #00f7ff;
+            --neon-green: #00ff9d;
+            --dark-bg: #0a0a1a;
+            --darker-bg: #050510;
+            --glow-effect: 0 0 10px var(--neon-blue), 0 0 20px rgba(0, 247, 255, 0.3);
+        }
+        
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: var(--dark-bg);
+            color: white;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        h1, h2, h3, .nav-item {
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.7;
+        }
+        
+        .neon-border {
+            border: 1px solid var(--neon-blue);
+            box-shadow: var(--glow-effect);
+        }
+        
+        .neon-text {
+            text-shadow: 0 0 5px var(--neon-blue), 0 0 10px rgba(0, 247, 255, 0.5);
+        }
+        
+        .neon-card {
+            background: rgba(10, 20, 30, 0.7);
+            border: 1px solid rgba(0, 247, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .neon-card:hover {
+            box-shadow: var(--glow-effect);
+            transform: translateY(-5px);
+        }
+        
+        .skill-icon {
+            transition: all 0.3s ease;
+        }
+        
+        .skill-icon:hover {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 8px var(--neon-green));
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+        
+        .timeline-connector {
+            position: absolute;
+            left: -16px;
+            top: 10px;
+            bottom: -10px;
+            width: 2px;
+            background: var(--neon-blue);
+        }
+        
+        .project-card {
+            perspective: 1000px;
+        }
+        
+        .project-inner {
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+        
+        .project-card:hover .project-inner {
+            transform: rotateY(180deg);
+        }
+        
+        .project-front, .project-back {
+            backface-visibility: hidden;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .project-back {
+            transform: rotateY(180deg);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .terminal {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--neon-blue);
+            font-family: 'Roboto Mono', monospace;
+        }
+        
+        .terminal-header {
+            background: rgba(0, 10, 20, 0.9);
+            border-bottom: 1px solid var(--neon-blue);
+        }
+        
+        .terminal-body {
+            height: 200px;
+            overflow-y: auto;
+        }
+        
+        .command-line::before {
+            content: '> ';
+            color: var(--neon-green);
+        }
+        
+        .typewriter {
+            overflow: hidden;
+            border-right: 2px solid var(--neon-green);
+            white-space: nowrap;
+            margin: 0 auto;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-black bg-opacity-70 backdrop-blur-md">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="text-xl font-bold neon-text">
+                <span class="text-white">Tech</span><span class="text-neon-blue">Sphere</span>
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#about" class="nav-item text-white hover:text-neon-blue transition duration-300">About</a>
+                <a href="#skills" class="nav-item text-white hover:text-neon-green transition duration-300">Skills</a>
+                <a href="#projects" class="nav-item text-white hover:text-neon-blue transition duration-300">Projects</a>
+                <a href="#timeline" class="nav-item text-white hover:text-neon-green transition duration-300">Timeline</a>
+                <a href="#contact" class="nav-item text-white hover:text-neon-blue transition duration-300">Contact</a>
+            </div>
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-white focus:outline-none">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="hidden fixed inset-0 z-40 bg-black bg-opacity-90 backdrop-blur-md flex flex-col items-center justify-center space-y-8">
+        <a href="#about" class="text-2xl text-white hover:text-neon-blue transition duration-300">About</a>
+        <a href="#skills" class="text-2xl text-white hover:text-neon-green transition duration-300">Skills</a>
+        <a href="#projects" class="text-2xl text-white hover:text-neon-blue transition duration-300">Projects</a>
+        <a href="#timeline" class="text-2xl text-white hover:text-neon-green transition duration-300">Timeline</a>
+        <a href="#contact" class="text-2xl text-white hover:text-neon-blue transition duration-300">Contact</a>
+        <button id="close-menu" class="absolute top-6 right-6 text-white text-2xl">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    
+    <!-- Hero Section -->
+    <section class="min-h-screen flex items-center justify-center relative overflow-hidden pt-20">
+        <div class="container mx-auto px-6 py-20 text-center">
+            <div class="max-w-3xl mx-auto">
+                <h1 class="text-5xl md:text-7xl font-bold mb-6 neon-text">
+                    <span class="text-white">Hello, I'm Mohammed a</span>
+                    <span class="typewriter text-neon-blue" id="typewriter"></span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-300 mb-10">
+                    Full-Stack Developer | AI/ML Engineer | DevOps Enthusiast
+                </p>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="#projects" class="px-8 py-3 bg-transparent border-2 border-neon-blue text-neon-blue rounded-full hover:bg-neon-blue hover:text-black transition duration-300 font-bold">
+                        View Projects
+                    </a>
+                    <a href="#contact" class="px-8 py-3 bg-neon-green text-black rounded-full hover:bg-transparent hover:text-neon-green hover:border-2 hover:border-neon-green transition duration-300 font-bold">
+                        Contact Me
+                    </a>
+                </div>
+            </div>
+            <div class="absolute bottom-10 left-0 right-0 flex justify-center">
+                <a href="#about" class="text-white animate-bounce">
+                    <i class="fas fa-chevron-down text-3xl"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+    
+    <!-- About Section -->
+    <section id="about" class="py-20 bg-black bg-opacity-50 backdrop-blur-sm">
+        <div class="container mx-auto px-6">
+            <h2 class="text-4xl font-bold text-center mb-16 neon-text">
+                <span class="text-white">About </span><span class="text-neon-blue">Me</span>
+            </h2>
+            <div class="flex flex-col lg:flex-row items-center gap-12">
+                <div class="lg:w-1/3 relative">
+                    <div class="w-64 h-64 mx-auto rounded-full overflow-hidden border-4 border-neon-blue glow-effect relative">
+                        <img src="https://via.placeholder.com/256" alt="Profile" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 border-2 border-neon-green rounded-full opacity-0 hover:opacity-100 transition duration-500"></div>
+                    </div>
+                    <div class="mt-8 text-center">
+                        <h3 class="text-2xl font-bold text-neon-green mb-2">Full-Stack Developer</h3>
+                        <p class="text-gray-400">ENSIAS Graduate | AI Club Member</p>
+                    </div>
+                </div>
+                <div class="lg:w-2/3">
+                    <div class="terminal neon-border rounded-lg overflow-hidden">
+                        <div class="terminal-header p-3 flex items-center">
+                            <div class="flex space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <div class="ml-4 text-sm text-gray-400">about_me.txt</div>
+                        </div>
+                        <div class="terminal-body p-4">
+                            <p class="command-line text-green-400 mb-2">$ whoami</p>
+                            <p class="text-gray-300 mb-4">I'm a passionate Full-Stack Developer with expertise in AI/ML and DevOps. My journey began in competitive programming and evolved into building intelligent systems and scalable applications.</p>
+                            
+                            <p class="command-line text-green-400 mb-2">$ education</p>
+                            <p class="text-gray-300 mb-4">• Engineering Degree in Computer Science @ ENSIAS<br>• CPGE (Preparatory Classes for Engineering Schools)<br>• Baccalaureate in Mathematical Sciences</p>
+                            
+                            <p class="command-line text-green-400 mb-2">$ interests</p>
+                            <p class="text-gray-300">• Artificial Intelligence & Machine Learning<br>• Competitive Programming<br>• Cloud Computing & DevOps<br>• Game Development with Pygame/GODOT</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Skills Section -->
+    <section id="skills" class="py-20 bg-black bg-opacity-50 backdrop-blur-sm">
+        <div class="container mx-auto px-6">
+            <h2 class="text-4xl font-bold text-center mb-16 neon-text">
+                <span class="text-white">Technical </span><span class="text-neon-green">Skills</span>
+            </h2>
+            
+            <!-- Skill Categories -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+                <!-- Full-Stack Development -->
+                <div class="neon-card rounded-lg p-6 hover:border-neon-blue">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 rounded-full bg-neon-blue bg-opacity-20 flex items-center justify-center mr-4">
+                            <i class="fas fa-code text-neon-blue"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-neon-blue">Full-Stack</h3>
+                    </div>
+                    <div class="flex flex-wrap gap-4">
+                        <div class="skill-tag" data-skill="react">
+                            <i class="fab fa-react text-3xl text-blue-400 skill-icon"></i>
+                            <div class="skill-detail hidden absolute bg-gray-900 p-2 rounded mt-2 text-xs">
+                                React.js - Advanced
+                            </div>
+                        </div>
+                        <div class="skill-tag" data-skill="node">
+                            <i class="fab fa-node-js text-3xl text-green-500 skill-icon"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="python">
+                            <i class="fab fa-python text-3xl text-yellow-400 skill-icon"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="flask">
+                            <i class="fas fa-flask text-3xl text-gray-300 skill-icon"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="django">
+                            <i class="fab fa-python text-3xl text-green-600 skill-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI/ML -->
+                <div class="neon-card rounded-lg p-6 hover:border-neon-green">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 rounded-full bg-neon-green bg-opacity-20 flex items-center justify-center mr-4">
+                            <i class="fas fa-brain text-neon-green"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-neon-green">AI/ML</h3>
+                    </div>
+                    <div class="flex flex-wrap gap-4">
+                        <div class="skill-tag" data-skill="tensorflow">
+                            <i class="fas fa-project-diagram text-3xl text-orange-500 skill-icon pulse"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="pytorch">
+                            <i class="fas fa-fire text-3xl text-red-500 skill-icon"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="spacy">
+                            <i class="fas fa-language text-3xl text-blue-300 skill-icon"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="opencv">
+                            <i class="fas fa-eye text-3xl text-green-300 skill-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- DevOps -->
+                <div class="neon-card rounded-lg p-6 hover:border-neon-blue">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 rounded-full bg-neon-blue bg-opacity-20 flex items-center justify-center mr-4">
+                            <i class="fas fa-server text-neon-blue"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-neon-blue">DevOps</h3>
+                    </div>
+                    <div class="flex flex-wrap gap-4">
+                        <div class="skill-tag" data-skill="docker">
+                            <i class="fab fa-docker text-3xl text-blue-400 skill-icon"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="jenkins">
+                            <i class="fab fa-jenkins text-3xl text-red-400 skill-icon"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="aws">
+                            <i class="fab fa-aws text-3xl text-orange-400 skill-icon"></i>
+                        </div>
+                        <div class="skill-tag" data-skill="terraform">
+                            <i class="fas fa-cloud text-3xl text-purple-400 skill-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Skill Proficiency Visualization -->
+            <div class="neon-card rounded-lg p-6 mb-8">
+                <h3 class="text-2xl font-bold text-neon-green mb-6">Skill Proficiency Matrix</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Each skill bar -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-300">React.js</span>
+                            <span class="text-sm font-medium text-neon-blue">90%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-neon-blue h-2 rounded-full" style="width: 90%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-300">TensorFlow</span>
+                            <span class="text-sm font-medium text-neon-green">85%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-neon-green h-2 rounded-full" style="width: 85%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-300">Docker</span>
+                            <span class="text-sm font-medium text-neon-blue">80%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-neon-blue h-2 rounded-full" style="width: 80%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-300">Python</span>
+                            <span class="text-sm font-medium text-neon-green">95%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-neon-green h-2 rounded-full" style="width: 95%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Certifications -->
+            <div class="neon-card rounded-lg p-6">
+                <h3 class="text-2xl font-bold text-neon-blue mb-6">Certifications</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-start p-4 border border-gray-700 rounded-lg hover:border-neon-green transition duration-300">
+                        <div class="w-16 h-16 flex-shrink-0 bg-blue-900 rounded-full flex items-center justify-center mr-4">
+                            <i class="fab fa-meta text-2xl text-white"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-neon-green">Meta Back-End Developer</h4>
+                            <p class="text-sm text-gray-400">Specialization in API Development & Databases</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start p-4 border border-gray-700 rounded-lg hover:border-neon-blue transition duration-300">
+                        <div class="w-16 h-16 flex-shrink-0 bg-blue-500 rounded-full flex items-center justify-center mr-4">
+                            <i class="fab fa-ibm text-2xl text-white"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-neon-blue">IBM AI Engineering</h4>
+                            <p class="text-sm text-gray-400">Deep Learning & Neural Networks</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Projects Section -->
+    <section id="projects" class="py-20 bg-black bg-opacity-50 backdrop-blur-sm">
+        <div class="container mx-auto px-6">
+            <h2 class="text-4xl font-bold text-center mb-16 neon-text">
+                <span class="text-white">Featured </span><span class="text-neon-blue">Projects</span>
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Project 1 -->
+                <div class="project-card h-96">
+                    <div class="project-inner h-full">
+                        <div class="project-front neon-card rounded-lg p-6 h-full flex flex-col">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 rounded-full bg-neon-blue bg-opacity-20 flex items-center justify-center mr-4">
+                                    <i class="fas fa-network-wired text-neon-blue"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-neon-blue">B2B Event Platform</h3>
+                            </div>
+                            <div class="flex-grow">
+                                <p class="text-gray-400 mb-4">A sophisticated matchmaking platform for business events powered by NLP and recommendation algorithms.</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="px-3 py-1 bg-blue-900 bg-opacity-50 text-blue-300 rounded-full text-xs">Node.js</span>
+                                    <span class="px-3 py-1 bg-green-900 bg-opacity-50 text-green-300 rounded-full text-xs">Flask</span>
+                                    <span class="px-3 py-1 bg-purple-900 bg-opacity-50 text-purple-300 rounded-full text-xs">Gemini NLP</span>
+                                    <span class="px-3 py-1 bg-yellow-900 bg-opacity-50 text-yellow-300 rounded-full text-xs">MongoDB</span>
+                                </div>
+                            </div>
+                            <div class="mt-auto">
+                                <div class="w-full bg-gray-800 rounded-full h-2 mb-2">
+                                    <div class="bg-neon-blue h-2 rounded-full" style="width: 100%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500 text-right">API connections visualized as particle streams</p>
+                            </div>
+                        </div>
+                        <div class="project-back neon-card rounded-lg p-6 h-full bg-gray-900 flex flex-col">
+                            <h3 class="text-xl font-bold text-neon-green mb-4">Technical Details</h3>
+                            <ul class="text-sm text-gray-300 space-y-2 mb-4">
+                                <li><i class="fas fa-check text-neon-green mr-2"></i> Hybrid architecture with Node.js for frontend and Flask for AI services</li>
+                                <li><i class="fas fa-check text-neon-green mr-2"></i> Custom NLP pipeline for attendee profile analysis</li>
+                                <li><i class="fas fa-check text-neon-green mr-2"></i> Real-time matchmaking algorithm with 92% satisfaction rate</li>
+                                <li><i class="fas fa-check text-neon-green mr-2"></i> Automated follow-up system with personalized suggestions</li>
+                            </ul>
+                            <div class="mt-auto flex justify-between">
+                                <a href="#" class="text-xs text-neon-blue hover:underline">
+                                    <i class="fas fa-code-branch mr-1"></i> View Source
+                                </a>
+                                <a href="#" class="text-xs text-neon-green hover:underline">
+                                    <i class="fas fa-external-link-alt mr-1"></i> Live Demo
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Project 2 -->
+                <div class="project-card h-96">
+                    <div class="project-inner h-full">
+                        <div class="project-front neon-card rounded-lg p-6 h-full flex flex-col">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 rounded-full bg-neon-green bg-opacity-20 flex items-center justify-center mr-4">
+                                    <i class="fas fa-x-ray text-neon-green"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-neon-green">Pneumonia Detection</h3>
+                            </div>
+                            <div class="flex-grow">
+                                <p class="text-gray-400 mb-4">Medical AI system for detecting pneumonia from chest X-rays using transfer learning with VGG16.</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="px-3 py-1 bg-orange-900 bg-opacity-50 text-orange-300 rounded-full text-xs">TensorFlow</span>
+                                    <span class="px-3 py-1 bg-blue-900 bg-opacity-50 text-blue-300 rounded-full text-xs">VGG16</span>
+                                    <span class="px-3 py-1 bg-green-900 bg-opacity-50 text-green-300 rounded-full text-xs">OpenCV</span>
+                                    <span class="px-3 py-1 bg-purple-900 bg-opacity-50 text-purple-300 rounded-full text-xs">Flask</span>
+                                </div>
+                            </div>
+                            <div class="mt-auto">
+                                <div class="w-full bg-gray-800 rounded-full h-2 mb-2">
+                                    <div class="bg-neon-green h-2 rounded-full" style="width: 94%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500 text-right">94% accuracy on test dataset</p>
+                            </div>
+                        </div>
+                        <div class="project-back neon-card rounded-lg p-6 h-full bg-gray-900 flex flex-col">
+                            <h3 class="text-xl font-bold text-neon-blue mb-4">Technical Details</h3>
+                            <ul class="text-sm text-gray-300 space-y-2 mb-4">
+                                <li><i class="fas fa-check text-neon-blue mr-2"></i> Transfer learning with pre-trained VGG16 model</li>
+                                <li><i class="fas fa-check text-neon-blue mr-2"></i> Dataset of chest X-ray images</li>
+                                <li><i class="fas fa-check text-neon-blue mr-2"></i> Custom data augmentation pipeline</li>
+                                <li><i class="fas fa-check text-neon-blue mr-2"></i> Web interface for medical professionals</li>
+                                <li><i class="fas fa-check text-neon-blue mr-2"></i> Explainable AI with heatmap visualization</li>
+                            </ul>
+                            <div class="mt-auto flex justify-between">
+                                <a href="#" class="text-xs text-neon-blue hover:underline">
+                                    <i class="fas fa-code-branch mr-1"></i> View Source
+                                </a>
+                                <a href="#" class="text-xs text-neon-green hover:underline">
+                                    <i class="fas fa-external-link-alt mr-1"></i> Research Paper
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Project 3 -->
+                <div class="md:col-span-2">
+                    <div class="neon-card rounded-lg p-6">
+                        <div class="flex flex-col md:flex-row items-center gap-6">
+                            <div class="md:w-1/3">
+                                <div class="w-full h-48 bg-gray-800 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-gamepad text-5xl text-purple-500"></i>
+                                </div>
+                            </div>
+                            <div class="md:w-2/3">
+                                <h3 class="text-2xl font-bold text-neon-blue mb-2">Competitive Programming Toolkit</h3>
+                                <p class="text-gray-400 mb-4">A collection of algorithms and data structures implemented in Python/C++ with visualization tools for learning competitive programming techniques.</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="px-3 py-1 bg-blue-900 bg-opacity-50 text-blue-300 rounded-full text-xs">Python</span>
+                                    <span class="px-3 py-1 bg-gray-900 bg-opacity-50 text-gray-300 rounded-full text-xs">C++</span>
+                                    <span class="px-3 py-1 bg-yellow-900 bg-opacity-50 text-yellow-300 rounded-full text-xs">Pygame</span>
+                                    <span class="px-3 py-1 bg-green-900 bg-opacity-50 text-green-300 rounded-full text-xs">GODOT</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="w-3/4 bg-gray-800 rounded-full h-2">
+                                        <div class="bg-purple-500 h-2 rounded-full" style="width: 85%"></div>
+                                    </div>
+                                    <a href="#" class="text-sm text-neon-green hover:underline">
+                                        <i class="fas fa-arrow-right mr-1"></i> Explore
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Timeline Section -->
+    <section id="timeline" class="py-20 bg-black bg-opacity-50 backdrop-blur-sm">
+        <div class="container mx-auto px-6">
+            <h2 class="text-4xl font-bold text-center mb-16 neon-text">
+                <span class="text-white">Professional </span><span class="text-neon-green">Timeline</span>
+            </h2>
+            
+            <div class="relative">
+                <!-- Timeline line -->
+                <div class="hidden md:block absolute left-1/2 top-0 bottom-0 w-1 bg-neon-blue bg-opacity-30 transform -translate-x-1/2"></div>
+                
+                <!-- Timeline items -->
+                <div class="space-y-8 md:space-y-16">
+                    <!-- Item 1 -->
+                    <div class="relative timeline-item md:w-1/2 md:ml-auto md:pl-16 pl-8">
+                        <div class="timeline-connector"></div>
+                        <div class="neon-card rounded-lg p-6 hover:border-neon-blue">
+                            <div class="flex items-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-neon-blue bg-opacity-20 flex items-center justify-center mr-4">
+                                    <i class="fas fa-graduation-cap text-neon-blue"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-neon-blue">ENSIAS</h3>
+                                <span class="ml-auto text-sm text-gray-400">2020 - 2023</span>
+                            </div>
+                            <p class="text-gray-300 mb-2">Engineering Degree in Computer Science</p>
+                            <ul class="text-sm text-gray-400 space-y-1">
+                                
+                                <li><i class="fas fa-caret-right text-neon-green mr-2"></i> Competitive Programming Team - ACM ICPC participant</li>
+                                <li><i class="fas fa-caret-right text-neon-green mr-2"></i> Specialization in Distributed Systems & AI</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Item 2 -->
+                    <div class="relative timeline-item md:w-1/2 md:pr-16 pl-8">
+                        <div class="timeline-connector"></div>
+                        <div class="neon-card rounded-lg p-6 hover:border-neon-green">
+                            <div class="flex items-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-neon-green bg-opacity-20 flex items-center justify-center mr-4">
+                                    <i class="fas fa-school text-neon-green"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-neon-green">CPGE</h3>
+                                <span class="ml-auto text-sm text-gray-400">2018 - 2020</span>
+                            </div>
+                            <p class="text-gray-300 mb-2">Preparatory Classes for Engineering Schools</p>
+                            <ul class="text-sm text-gray-400 space-y-1">
+                                <li><i class="fas fa-caret-right text-neon-blue mr-2"></i> Intensive program in Mathematics & Physics</li>
+                                <li><i class="fas fa-caret-right text-neon-blue mr-2"></i> Developed strong problem-solving skills</li>
+                                <li><i class="fas fa-caret-right text-neon-blue mr-2"></i> National competitive exams preparation</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Item 3 -->
+                    <div class="relative timeline-item md:w-1/2 md:ml-auto md:pl-16 pl-8">
+                        <div class="timeline-connector"></div>
+                        <div class="neon-card rounded-lg p-6 hover:border-neon-green">
+                            <div class="flex items-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-neon-green bg-opacity-20 flex items-center justify-center mr-4">
+                                    <i class="fas fa-briefcase text-neon-green"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-neon-green">Future Goals</h3>
+                                <span class="ml-auto text-sm text-gray-400">2024+</span>
+                            </div>
+                            <p class="text-gray-300 mb-2">Pursuing excellence in AI Engineering</p>
+                            <ul class="text-sm text-gray-400 space-y-1">
+                                <li><i class="fas fa-caret-right text-neon-blue mr-2"></i> Research in Explainable AI (XAI)</li>
+                                <li><i class="fas fa-caret-right text-neon-blue mr-2"></i> Developing scalable AI solutions for healthcare</li>
+                                <li><i class="fas fa-caret-right text-neon-blue mr-2"></i> Contributing to open-source ML frameworks</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Item 4 -->
+                    
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 bg-black bg-opacity-50 backdrop-blur-sm">
+        <div class="container mx-auto px-6">
+            <h2 class="text-4xl font-bold text-center mb-16 neon-text">
+                <span class="text-white">Get In </span><span class="text-neon-blue">Touch</span>
+            </h2>
+            
+            <div class="flex flex-col lg:flex-row gap-12">
+                <div class="lg:w-1/2">
+                    <div class="neon-card rounded-lg p-8 h-full">
+                        <h3 class="text-2xl font-bold text-neon-green mb-6">Contact Information</h3>
+                        
+                        <div class="space-y-6">
+                            <div class="flex items-start">
+                                <div class="w-12 h-12 rounded-full bg-neon-blue bg-opacity-20 flex items-center justify-center mr-4 flex-shrink-0">
+                                    <i class="fas fa-envelope text-neon-blue"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-300">Email</h4>
+                                    <a href="mailto:contact@techsphere.dev" class="text-neon-green hover:underline">fengiro.arafa@gmail.com</a>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="w-12 h-12 rounded-full bg-neon-green bg-opacity-20 flex items-center justify-center mr-4 flex-shrink-0">
+                                    <i class="fab fa-linkedin-in text-neon-green"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-300">LinkedIn</h4>
+                                    <a href="https://linkedin.com/in/techsphere" target="_blank" class="text-neon-blue hover:underline">linkedin.com/in/MohammedArafa</a>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="w-12 h-12 rounded-full bg-neon-blue bg-opacity-20 flex items-center justify-center mr-4 flex-shrink-0">
+                                    <i class="fab fa-github text-neon-blue"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-300">GitHub</h4>
+                                    <a href="https://github.com/techsphere" target="_blank" class="text-neon-green hover:underline">github.com/Mharfe23</a>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="w-12 h-12 rounded-full bg-neon-green bg-opacity-20 flex items-center justify-center mr-4 flex-shrink-0">
+                                    <i class="fas fa-map-marker-alt text-neon-green"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-300">Location</h4>
+                                    <p class="text-neon-blue">Rabat, Morocco</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-12">
+                            <h4 class="font-bold text-gray-300 mb-4">Connect with me</h4>
+                            <div class="flex space-x-4">
+                                <a href="#" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-neon-blue hover:text-black transition duration-300">
+                                    <i class="fab fa-twitter"></i>
+                                </a>
+                                <a href="#" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-neon-green hover:text-black transition duration-300">
+                                    <i class="fab fa-kaggle"></i>
+                                </a>
+                                <a href="#" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-neon-blue hover:text-black transition duration-300">
+                                    <i class="fab fa-dev"></i>
+                                </a>
+                                <a href="#" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-neon-green hover:text-black transition duration-300">
+                                    <i class="fab fa-stack-overflow"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="lg:w-1/2">
+                    <div class="neon-card rounded-lg p-8 h-full">
+                        <h3 class="text-2xl font-bold text-neon-blue mb-6">Send Me a Message</h3>
+                        
+                        <form class="space-y-6">
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-gray-300 mb-1">Your Name</label>
+                                <input type="text" id="name" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-neon-blue focus:ring-1 focus:ring-neon-blue text-white">
+                            </div>
+                            
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
+                                <input type="email" id="email" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-neon-green focus:ring-1 focus:ring-neon-green text-white">
+                            </div>
+                            
+                            <div>
+                                <label for="subject" class="block text-sm font-medium text-gray-300 mb-1">Subject</label>
+                                <input type="text" id="subject" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-neon-blue focus:ring-1 focus:ring-neon-blue text-white">
+                            </div>
+                            
+                            <div>
+                                <label for="message" class="block text-sm font-medium text-gray-300 mb-1">Message</label>
+                                <textarea id="message" rows="5" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-neon-green focus:ring-1 focus:ring-neon-green text-white"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="w-full py-3 bg-neon-blue text-black rounded-lg font-bold hover:bg-transparent hover:text-neon-blue hover:border-2 hover:border-neon-blue transition duration-300">
+                                Send Message
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="py-8 bg-black bg-opacity-70 backdrop-blur-sm border-t border-gray-800">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="text-xl font-bold neon-text mb-4 md:mb-0">
+                    <span class="text-white">Tech</span><span class="text-neon-blue">Sphere</span>
+                </div>
+                <div class="text-gray-400 text-sm">
+                    © 2023 TechSphere Portfolio. All rights reserved.
+                </div>
+                <div class="flex space-x-4 mt-4 md:mt-0">
+                    <a href="#" class="text-gray-400 hover:text-neon-blue transition duration-300">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-neon-green transition duration-300">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-neon-blue transition duration-300">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-neon-green transition duration-300">
+                        <i class="fab fa-kaggle"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Back to Top Button -->
+    <a href="#" id="back-to-top" class="fixed bottom-8 right-8 w-12 h-12 bg-neon-green bg-opacity-20 text-neon-green rounded-full flex items-center justify-center text-xl hover:bg-neon-green hover:text-black transition duration-300 hidden">
+        <i class="fas fa-arrow-up"></i>
+    </a>
+    
+    <script>
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const closeMenu = document.getElementById('close-menu');
+        
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.remove('hidden');
+            mobileMenu.classList.add('flex');
+        });
+        
+        closeMenu.addEventListener('click', () => {
+            mobileMenu.classList.add('hidden');
+            mobileMenu.classList.remove('flex');
+        });
+        
+        // Back to top button
+        const backToTopButton = document.getElementById('back-to-top');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.remove('hidden');
+            } else {
+                backToTopButton.classList.add('hidden');
+            }
+        });
+        
+        backToTopButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        
+        // Typewriter effect
+        const typewriterElement = document.getElementById('typewriter');
+        const texts = ["Developer", "Engineer", "Problem Solver", "Tech Enthusiast"];
+        let textIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let typingSpeed = 100;
+        
+        function typeWriter() {
+            const currentText = texts[textIndex];
+            
+            if (isDeleting) {
+                typewriterElement.textContent = currentText.substring(0, charIndex - 1);
+                charIndex--;
+                typingSpeed = 50;
+            } else {
+                typewriterElement.textContent = currentText.substring(0, charIndex + 1);
+                charIndex++;
+                typingSpeed = 100;
+            }
+            
+            if (!isDeleting && charIndex === currentText.length) {
+                isDeleting = true;
+                typingSpeed = 1500; // Pause at end of word
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                textIndex = (textIndex + 1) % texts.length;
+                typingSpeed = 500; // Pause before typing next word
+            }
+            
+            setTimeout(typeWriter, typingSpeed);
+        }
+        
+        // Start the typewriter effect
+        setTimeout(typeWriter, 1000);
+        
+        // Skill hover effects
+        const skillTags = document.querySelectorAll('.skill-tag');
+        
+        skillTags.forEach(tag => {
+            const skill = tag.getAttribute('data-skill');
+            const detail = tag.querySelector('.skill-detail');
+            
+            tag.addEventListener('mouseenter', () => {
+                if (detail) {
+                    detail.classList.remove('hidden');
+                }
+                
+                // Add specific animations based on skill
+                if (skill === 'tensorflow') {
+                    tag.querySelector('.skill-icon').classList.add('animate-pulse');
+                } else if (skill === 'python') {
+                    tag.querySelector('.skill-icon').classList.add('floating');
+                }
+            });
+            
+            tag.addEventListener('mouseleave', () => {
+                if (detail) {
+                    detail.classList.add('hidden');
+                }
+                
+                if (skill === 'tensorflow') {
+                    tag.querySelector('.skill-icon').classList.remove('animate-pulse');
+                } else if (skill === 'python') {
+                    tag.querySelector('.skill-icon').classList.remove('floating');
+                }
+            });
+        });
+        
+        // Smooth scrolling for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Close mobile menu if open
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                        mobileMenu.classList.remove('flex');
+                    }
+                }
+            });
+        });
+        
+        // Initialize Three.js for background
+        const initThreeJS = () => {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            // Create scene
+            const scene = new THREE.Scene();
+            
+            // Create camera
+            const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Create renderer
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+            
+            // Create particles
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particleCount = 1000;
+            
+            const posArray = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 10;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.02,
+                color: 0x00f7ff,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+            
+            // Animation loop
+            const animate = () => {
+                requestAnimationFrame(animate);
+                
+                particlesMesh.rotation.x += 0.0005;
+                particlesMesh.rotation.y += 0.0005;
+                
+                renderer.render(scene, camera);
+            };
+            
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                const newWidth = container.clientWidth;
+                const newHeight = container.clientHeight;
+                
+                camera.aspect = newWidth / newHeight;
+                camera.updateProjectionMatrix();
+                
+                renderer.setSize(newWidth, newHeight);
+            });
+        };
+        
+        // Initialize Three.js when the page loads
+        window.addEventListener('load', initThreeJS);
+    </script>
+</body>
+</html>
